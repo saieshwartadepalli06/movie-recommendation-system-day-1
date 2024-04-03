@@ -7,12 +7,9 @@ import os
 
 app = Flask(__name__)
 
-# Ensure your CSV files are in a 'data' folder that is at the root of your project.
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-
 # Load dataframes
-df_cleaned = pd.read_csv(os.path.join(DATA_DIR, 'df_cleaned_use.csv'))
-df_images = pd.read_csv(os.path.join(DATA_DIR, 'combined_genres_df_until_2024_use.csv'))
+df_cleaned = pd.read_csv('/workspaces/movie-recommendation-system-day-1/data/df_cleaned_use.csv')
+df_images = pd.read_csv('/workspaces/movie-recommendation-system-day-1/data/combined_genres_df_until_2024_use.csv')
 
 # Preprocessing
 df_images.rename(columns={'title': 'Title'}, inplace=True)
@@ -46,13 +43,13 @@ def get_recommendations(title, cosine_sim=cosine_sim):
 @app.route('/')
 def index():
     sample_movies = df_joined.sample(n=18).to_dict(orient='records')
-    return render_template('index.html', sample_movies=sample_movies)
+    return render_template('/workspaces/movie-recommendation-system-day-1/templates/index.html', sample_movies=sample_movies)
 
 @app.route('/recommend', methods=['GET'])
 def recommend():
     title = request.args.get('title', '').strip()
     recommendations = get_recommendations(title)
-    return render_template('recommendations.html', recommendations=recommendations, title=title)
+    return render_template('/workspaces/movie-recommendation-system-day-1/templates/recommendations.html', recommendations=recommendations, title=title)
 
 # This route is for your API endpoint that returns JSON
 @app.route('/api/get-recommendations', methods=['GET'])
