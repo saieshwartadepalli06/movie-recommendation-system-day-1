@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+</head>
+<body>
+    <header class="header">
+        <h1>Find Your Next Favorite Movie</h1>
+        <form action="/recommend" method="get" class="search-form">
+            <input type="text" name="title" placeholder="Enter a movie title..." class="search-input">
+            <input type="submit" value="Search" class="search-button">
+        </form>
+    </header>
+
+    <div class="movie-grid">
+    <section id="movie-display-area">
+        {% for movie in sample_movies %}
+        <div class="movie-item">
+            <img class="movie-image" src="{{ movie['imageURL'] }}" alt="{{ movie['Title'] }}" data-movie='{{ movie|tojson|safe }}'>
+            <h2 data-movie='{{ movie|tojson|safe }}'>{{ movie['Title'] }}</h2>
+        </div>
+        {% endfor %}
+    </section>
+    </div>
+
+    <div id="movie-info-modal" class="modal">
+        <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div id="movie-info"></div>
+    </div>
+    </div> 
+
+
+
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Movie Recommendations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+</head>
+<body>
+    <h1>Recommended Movies</h1>
+    <div class="movie-grid">
+        {% for movie in recommendations %}
+        <div class="movie-item">
+            <img class="movie-image" src="{{ movie['imageURL'] }}" alt="{{ movie['Title'] }}" data-title="{{ movie['Title'] }}" onclick="getMoreRecommendations('{{ movie['Title'] }}')">
+            <h2 data-movie='{{ movie|tojson|safe }}'>{{ movie['Title'] }}</h2>
+        </div>
+                           
+        {% endfor %}
+    </div>
+    <div id="movie-info-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="movie-info"></div>
+        </div>
+    </div>    
+</body>
+</html> 
