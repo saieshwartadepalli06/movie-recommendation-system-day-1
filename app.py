@@ -1,44 +1,46 @@
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
-import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import ast
+import os
 
-app = Flask(__name__) 
+app = Flask(__name__)
+
+# Ensure your CSV files are in a 'data' folder that is at the root of your project.
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 # Load dataframes
-df_cleaned = pd.read_csv('/Users/saieshwartadepalli/Downloads/Recommendation System/data/df_cleaned_use.csv')
-df_images = pd.read_csv('/Users/saieshwartadepalli/Downloads/Recommendation System/data/combined_genres_df_until_2024_use.csv')
+df_cleaned = pd.read_csv(os.path.join(DATA_DIR, 'df_cleaned_use.csv'))
+df_images = pd.read_csv(os.path.join(DATA_DIR, 'combined_genres_df_until_2024_use.csv'))
 
 # Preprocessing
 df_images.rename(columns={'title': 'Title'}, inplace=True)
-df_images['imageURL'] = df_images['imageURL'].apply(lambda x: ast.literal_eval(x).get('imageUrl') if pd.notnull(x) else None)
-df_joined = pd.merge(df_cleaned, df_images[['Title', 'imageURL']], on='Title', how='left')
-df_joined.drop_duplicates(subset='Title', inplace=True)
+df_images['imageURL'] = df_images['imageURL'].apply(ast.literal_eval).apply(lambda x: x.get('imageUrl') if x else None)
+df_joined = pd.merge(df_cleaned, df_images[['Title', 'imageURL']], on='Title', how='left').drop_duplicates(subset='Title')
 
 # Ensure all relevant columns are of type string
-for col in ['Star_1', 'Star_2', 'Star_3', 'Star_4', 'Director_Name']:
-    df_joined[col] = df_joined[col].astype(str)
-
-# Create the combined_features column
-df_joined['combined_features'] = df_joined['Star_1'] + ' ' + df_joined['Star_2'] + ' ' + df_joined['Star_3'] + ' ' + df_joined['Star_4'] + ' ' + df_joined['Director_Name']
-df_joined = pd.read_csv('/Users/saieshwartadepalli/Downloads/Recommendation System/data/df_joined_use.csv')
+df_joined = df_joined.fillna('Unknown')  # Replace NaN with 'Unknown'
+df_joined['combined_features'] = df_joined[['Star_1', 'Star_2', 'Star_3', 'Star_4', 'Director_Name']].agg(' '.join, axis=1)
 
 # Generate cosine similarity matrix
 count_vectorizer = CountVectorizer(stop_words='english')
 count_matrix = count_vectorizer.fit_transform(df_joined['combined_features'])
 cosine_sim = cosine_similarity(count_matrix)
 
-def get_recommendations(title, df=df_joined, cosine_sim=cosine_sim):
-    filtered_df = df[df['Title'].str.contains(title, case=False, na=False)]
-    if filtered_df.empty:
-        return []  # Or return an appropriate response indicating no matches found
-    
-    idx = filtered_df.index[0]  # Proceed since we now know there is at least one match
+def get_recommendations(title, cosine_sim=cosine_sim):
+    df = df_joined.copy()
+    df['Title'] = df['Title'].str.lower()  # Convert to lower case for case insensitive matching
+    title = title.lower()  # Convert the search title to lower case as well
+
+    if title not in df['Title'].values:
+        return jsonify({"error": "Movie not found"}), 404
+
+    idx = df.index[df['Title'] == title][0]
     sim_scores = list(enumerate(cosine_sim[idx]))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-    movie_indices = [i[0] for i in sim_scores[1:19]]
+    movie_indices = [i[0] for i in sim_scores[1:11]]
+
     return df.iloc[movie_indices].to_dict(orient='records')
 
 @app.route('/')
@@ -48,20 +50,17 @@ def index():
 
 @app.route('/recommend', methods=['GET'])
 def recommend():
-    title = request.args.get('title', '')
+    title = request.args.get('title', '').strip()
     recommendations = get_recommendations(title)
     return render_template('recommendations.html', recommendations=recommendations, title=title)
 
-@app.route('/get-recommendations', methods=['GET'])
+# This route is for your API endpoint that returns JSON
+@app.route('/api/get-recommendations', methods=['GET'])
 def get_recommendations_route():
-    title = request.args.get('title')
-    if not title:
-        return jsonify({"error": "Missing title parameter"}), 400
+    title = request.args.get('title', '').strip()
     recommendations = get_recommendations(title)
-    if recommendations:
-        return jsonify(recommendations)
-    else:
-        return jsonify({"error": "No recommendations found"}), 404
+    return jsonify(recommendations)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Set debug to False when deploying to production
+    app.run(debug=False)
